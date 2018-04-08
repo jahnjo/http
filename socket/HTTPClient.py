@@ -1,6 +1,7 @@
 import socket
 import sys
 import os.path
+import codecs
 
 http = "http://"
 
@@ -18,7 +19,7 @@ def httpGET(server, port, path):
         sys.exit()
     s.send(request.encode())
     results = s.recv(4096)
-    print(results.decode())
+    #print(results.decode())
     return results.decode()
 
 def GETResponse(results):
@@ -52,22 +53,26 @@ def GETResponse(results):
         if x == len(results.splitlines()) - 1 and html == True:
             if responseLevel == 2:
                 print("index.html was stored in \"response.txt\"")
+
+    
         
 def httpPUT(server, port, path, desiredFilePath):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     userAgent = 'VCU-CMSC491'
-    request = "PUT {} HTTP/1.0\r\nHost: ".format(path) + server + "\nFile-Location: " + desiredFilePath + "\nUser-Agent: " + userAgent + "\r\n\r\n"
+    rawFile = desiredFilePath[desiredFilePath.rfind("/") + 1 : ]
+    f = open(desiredFilePath, "r")
+    if f.mode == "r":
+        contents = f.read()
+        f.close()
+
+    request = "PUT {} HTTP/1.0\r\nHost: ".format(path) + server + "\nFile-Location: " + desiredFilePath + "\nUser-Agent: " + userAgent + "\nContents-of: {}\n".format(rawFile) + contents + "\r\n\r\n"
     print("PUT request:\n")
     print(request)
     s.settimeout(5)
-    try:
-        s.connect((socket.gethostbyname(server),port))
-    except socket.error:
-        print("Error: Port not available or not open, exiting program")
-        sys.exit()
+    s.connect((socket.gethostbyname(server),port))
     s.send(request.encode())
     results = s.recv(4096)
-    print(results.decode())
+    print("FROM SERVER: \n" + results.decode())
     return results.decode()
 
 
@@ -76,7 +81,6 @@ if __name__ == "__main__":
         input = sys.argv[2]
         if os.path.isfile(sys.argv[3]):
             desiredFilePath = sys.argv[3]
-            #print(desiredFilePath)
             putRequest = True
         else:
             print("No valid file path, path must start with '.'")
@@ -106,9 +110,11 @@ if __name__ == "__main__":
 
 if putRequest:
     results = httpPUT(serverInput, int(port), path, desiredFilePath)
-elif not putRequest:   
+elif not putRequest: 
     results = httpGET(serverInput, int(port), path)
+    print("FROM SERVER: \n")
     GETResponse(results)
+    
 
 
 
